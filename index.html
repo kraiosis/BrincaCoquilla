@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <!-- Prevents pinch-to-zoom scaling issues on iPhones/Androids -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>¡Brinca, Coquílla!</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation; /* Removes the 300ms touch delay on mobile */
+        }
+        body {
+            margin: 0; padding: 0; background-color: #f0f4f0;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100vh; height: 100dvh;
+            font-family: 'Courier New', Courier, monospace; overflow: hidden; user-select: none;
+            -webkit-user-select: none; /* Disables text highlighting on iOS iOS */
+        }
+        #game-container {
+            position: relative; width: 100vw; height: 100vh; height: 100dvh;
+            background: linear-gradient(to bottom, #cce5ff 0%, #e0f0e0 100%);
+            overflow: hidden;
+        }
+        #score-board {
+            position: absolute; top: clamp(10px, 2vh, 20px); right: clamp(10px, 2vw, 20px);
+            font-size: clamp(12px, 2.5vw, 20px); font-weight: bold; color: #2d4028; z-index: 5;
+        }
+        #fly-count { color: #d97706; margin-right: clamp(6px, 2vw, 15px); }
+        #game-over-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(45, 64, 40, 0.75); flex-direction: column;
+            align-items: center; justify-content: center; color: white; z-index: 10; backdrop-filter: blur(2px);
+        }
+        #game-over-screen h1 { margin: 0 0 10px 0; font-size: clamp(22px, 6vw, 40px); letter-spacing: 3px; }
+        #game-over-screen p { margin: 0; padding: 0 16px; font-size: clamp(13px, 3vw, 18px); text-align: center; }
+        #game-over-scores {
+            display: grid; grid-template-columns: minmax(0, 1fr) auto;
+            column-gap: 24px; row-gap: 8px; align-items: center;
+            width: min(320px, calc(100vw - 32px)); margin: 12px 0 18px;
+            font-size: clamp(16px, 3.5vw, 22px); font-weight: bold;
+        }
+        .game-over-label { text-align: left; }
+        .game-over-value { text-align: right; }
+        #splash-screen {
+            position: absolute; inset: 0; z-index: 20;
+            display: grid; grid-template-rows: auto auto auto; align-content: center; justify-items: center;
+            overflow: hidden; row-gap: clamp(4px, 1.3vh, 10px);
+            padding: max(12px, env(safe-area-inset-top)) clamp(16px, 4vw, 40px) max(12px, env(safe-area-inset-bottom));
+            background: linear-gradient(150deg, #eff9fb, #d9f0e9 55%, #eef4d9);
+            color: #17364b; text-align: center;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+        #splash-logo {
+            display: block; align-self: center; width: min(82vw, 560px); height: auto;
+            max-height: min(46dvh, 360px); object-fit: contain; object-position: center;
+            filter: drop-shadow(0 12px 24px rgba(28, 93, 82, 0.14));
+        }
+        #splash-content {
+            display: flex; flex-direction: column; align-items: center;
+            gap: clamp(8px, 1.4vh, 14px);
+            width: 100%; padding: 0 12px 4px;
+        }
+        #splash-badge {
+            z-index: 1; max-width: calc(100% - 56px);
+            margin: 0; padding: 8px 14px;
+            border-radius: 999px; background: #e4f4dc;
+            color: #326447;
+            font-size: 11px; font-weight: 800; letter-spacing: 0.11em; text-align: center;
+        }
+        #splash-description {
+            max-width: 480px; margin: 0; color: #526d72;
+            font-size: clamp(14px, 2vw, 17px); line-height: 1.5;
+        }
+        #start-button {
+            min-width: 190px; border: 0; border-radius: 999px; padding: 15px 28px;
+            background: #a8e68b; color: #234523;
+            font: inherit; font-size: 16px; font-weight: 800;
+            box-shadow: 0 6px 0 #77bd5c, 0 12px 22px rgba(70, 145, 57, 0.18);
+            cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+        #start-button:hover { background: #98dc79; transform: translateY(-2px); box-shadow: 0 8px 0 #77bd5c, 0 15px 24px rgba(70, 145, 57, 0.22); }
+        #start-button:active { transform: translateY(3px); box-shadow: 0 3px 0 #77bd5c; }
+        #splash-meta {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 6px 14px; margin: 2px 0 0; color: #647a79;
+            font-size: 12px; line-height: 1.5;
+        }
+        #splash-meta a { color: #287b59; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+        #start-button:focus-visible { outline: 3px solid #17364b; outline-offset: 5px; }
+        #fullscreen-button {
+            position: absolute; top: clamp(10px, 2vh, 20px); left: clamp(10px, 2vw, 20px); z-index: 30;
+            display: grid; width: 44px; height: 44px; place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.65); border-radius: 12px;
+            background: rgba(23, 59, 53, 0.78); color: white; cursor: pointer;
+        }
+        #fullscreen-button:hover { background: #285b42; }
+        #fullscreen-button:focus-visible { outline: 3px solid #f5a623; outline-offset: 3px; }
+        #fullscreen-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        #fullscreen-button .fullscreen-exit { display: none; }
+        #fullscreen-button[aria-pressed="true"] .fullscreen-enter { display: none; }
+        #fullscreen-button[aria-pressed="true"] .fullscreen-exit { display: block; }
+        #fullscreen-error {
+            position: absolute; top: 62px; left: clamp(10px, 2vw, 20px); z-index: 30;
+            max-width: min(320px, calc(100vw - 20px)); margin: 0; padding: 8px 12px;
+            border-radius: 8px; background: #7f1d1d; color: white;
+            font: 13px/1.4 Arial, sans-serif;
+        }
+        #audio-button {
+            position: absolute; top: calc(clamp(10px, 2vh, 20px) + 52px); left: clamp(10px, 2vw, 20px); z-index: 30;
+            display: grid; width: 44px; height: 44px; place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.65); border-radius: 12px;
+            background: rgba(23, 59, 53, 0.78); color: white; cursor: pointer;
+        }
+        #audio-button:hover { background: #285b42; }
+        #audio-button:focus-visible { outline: 3px solid #f5a623; outline-offset: 3px; }
+        #audio-button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        #audio-button .audio-muted { display: none; }
+        #audio-button[aria-pressed="false"] .audio-enabled { display: none; }
+        #audio-button[aria-pressed="false"] .audio-muted { display: block; }
+        #audio-status {
+            position: absolute; top: calc(clamp(10px, 2vh, 20px) + 104px); left: clamp(10px, 2vw, 20px); z-index: 30;
+            max-width: min(320px, calc(100vw - 20px)); margin: 0; padding: 8px 12px;
+            border-radius: 8px; background: #7f1d1d; color: white;
+            font: 13px/1.4 Arial, sans-serif;
+        }
+        @media (max-height: 650px) {
+            #splash-content { gap: 7px; padding-bottom: 0; }
+            #splash-description { font-size: 14px; }
+            #start-button { padding: 12px 26px; }
+            #splash-meta { margin-top: 0; }
+        }
+        @media (max-height: 500px) {
+            #splash-content { gap: 7px; padding-bottom: 0; }
+            #splash-description { font-size: 13px; line-height: 1.35; }
+            #start-button { padding: 11px 24px; }
+            #splash-badge { padding: 5px 10px; font-size: 10px; }
+            #splash-meta { font-size: 11px; }
+        }
+        canvas {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            display: block; object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <button id="fullscreen-button" type="button" aria-label="Activar pantalla completa" aria-pressed="false" title="Activar pantalla completa">
+            <svg class="fullscreen-enter" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" />
+            </svg>
+            <svg class="fullscreen-exit" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 8h5V3M21 8h-5V3M8 21v-5H3m13 0h5v5" />
+            </svg>
+        </button>
+        <button id="audio-button" type="button" aria-label="Silenciar audio" aria-pressed="true" title="Silenciar audio">
+            <svg class="audio-enabled" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13" />
+            </svg>
+            <svg class="audio-muted" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4V5ZM16 9l5 6m0-6-5 6" />
+            </svg>
+        </button>
+        <p id="fullscreen-error" role="status" hidden></p>
+        <p id="audio-status" role="status" hidden></p>
+        <section id="splash-screen" aria-label="¡Brinca, Coquílla! splash screen">
+            <p id="splash-badge">AVENTURA ARCADE · PUERTO RICO</p>
+            <img id="splash-logo" src="brinca-coquilla-logo.png" alt="¡Brinca, Coquílla!, Coquílla brincando en un paisaje tropical">
+            <div id="splash-content">
+                <p id="splash-description">Salta, esquiva y ayuda a Coquílla a conseguir una nueva puntuación récord.</p>
+                <button id="start-button" type="button">Toca para jugar</button>
+                <p id="splash-meta">
+                    <span>by Federico Guzmán (kraiosis)</span>
+                    <a href="https://fedeguzman.com" target="_blank" rel="noopener noreferrer">fedeguzman.com</a>
+                    <span>Version 1.0.0</span>
+                </p>
+            </div>
+        </section>
+        <div id="score-board">
+            <span id="fly-count">🪰 0</span>
+            HI <span id="high-score">00000</span> 
+            <span id="current-score">00000</span>
+        </div>
+        <div id="game-over-screen">
+            <h1>G A M E  O V E R</h1>
+            <div id="game-over-scores" aria-live="polite">
+                <span class="game-over-label">Score:</span>
+                <span id="game-over-score" class="game-over-value">00000</span>
+                <span class="game-over-label">High score:</span>
+                <span id="game-over-high-score" class="game-over-value">00000</span>
+            </div>
+            <p>Tap Screen or Press Space to Restart</p>
+        </div>
+        <canvas id="gameCanvas" width="800" height="250"></canvas>
+        <audio id="background-music" src="background-music.mp3" loop preload="none" hidden></audio>
+    </div>
+    
+    <script src="brincacoquilla.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Audio assets
+
+background-music.mp3
+Source: "Hungry Dino - 9 Chiptune Tracks + 10 SFX" by SketchyLogic
+Track: HappyLevel
+License: CC-BY 3.0
+Converted from the original WAV source to MP3 for browser playback.
+https://opengameart.org/content/hungry-dino-9-chiptune-tracks-10-sfx
+https://creativecommons.org/licenses/by/3.0/
